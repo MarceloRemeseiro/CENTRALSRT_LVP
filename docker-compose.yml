@@ -11,7 +11,7 @@ services:
       - ./:/app
       - /app/node_modules
     environment:
-      - DATABASE_URL=mysql://root:1122@db:3306/dbcentral
+      - DATABASE_URL=mysql://root:1122@db:3307/dbcentral
     depends_on:
       - db
     networks:
@@ -25,7 +25,7 @@ services:
       MYSQL_ROOT_PASSWORD: 1122
       MYSQL_DATABASE: dbcentral
     ports:
-      - '3306:3306'
+      - '3307:3306'
     volumes:
       - db_data:/var/lib/mysql
     networks:
