@@ -3,7 +3,7 @@ version: '3'
 services:
   web:
     build: .
-    container_name: nextjs-app
+    container_name: central-srt
     command: sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL to be ready...';sleep 1;done;echo 'MySQL is ready!';npx prisma migrate deploy && npm run dev"
     ports:
       - '3000:3000'
@@ -11,7 +11,7 @@ services:
       - ./:/app
       - /app/node_modules
     environment:
-      - DATABASE_URL=mysql://root:1122@db:3307/dbcentral
+      - DATABASE_URL=mysql://root:1122@db:3306/dbcentral
     depends_on:
       - db
     networks:
@@ -19,7 +19,7 @@ services:
 
   db:
     image: mysql:8.0
-    container_name: mysql-db
+    container_name: mysql-central
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 1122
