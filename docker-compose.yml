@@ -4,7 +4,7 @@ services:
   web:
     build: .
     container_name: central-srt
-    command: sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL to be ready...';sleep 1;done;echo 'MySQL is ready!';npx prisma migrate deploy && npm run bluid && npm run start"
+    command: sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL to be ready...';sleep 1;done;echo 'MySQL is ready!';npx prisma migrate deploy && npm run build && npm run start"
     ports:
       - '3000:3000'
     volumes:
