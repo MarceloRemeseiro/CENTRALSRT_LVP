@@ -161,8 +161,7 @@ export async function restreamerAPIConnection() {
           const outputInfo = {
             id: process.id,
             name: process.metadata?.["restreamer-ui"]?.name || "Sin nombre",
-            address:
-              process.config?.output?.[0]?.address || "Dirección no disponible",
+            address:process.config?.output?.[0]?.address || "Dirección no disponible",
             state: process.state?.exec || "Desconocido",
             order: process.state?.order || "Desconocido",
             key: process.config?.output?.[0]?.options?.[13] || "--", // Validación para evitar errores

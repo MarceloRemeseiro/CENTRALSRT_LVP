@@ -148,10 +148,12 @@ const InputCard = ({
           </div>
           <div className="col-span-2">
             <p className="text-gray-400 font-semibold">STREAMID</p>
-            <p className="text-sm text-gray-300 break-all">
-              {`${input.streamId}.stream,mode:publish`}
+            <div className="flex items-center justify-between ">
+              <p className="text-sm text-gray-300 break-all">
+                {`${input.streamId}.stream,mode:publish`}
+              </p>
               <CopyButton text={`${input.streamId}.stream,mode:publish`} />
-            </p>
+            </div>
           </div>
         </div>
       </div>
@@ -159,17 +161,18 @@ const InputCard = ({
       <div className="mb-2">
         <IframePlayer url={input.defaultOutputs.HTML} />
       </div>
-      <p>
-        <strong className="text-gray-400">Nombre:</strong> {input.name}
-      </p>
-      {/* <p>
-        <strong className="text-gray-400">Descripción:</strong>{" "}
-        {input.description}
-      </p> */}
-      <p>
-        <strong className="text-gray-400">Stream ID:</strong> {input.streamId}{" "}
-        <CopyButton text={input.streamId} />
-      </p>
+      <div className="px-3">
+        <p>
+          <strong className="text-gray-400">Nombre:</strong> {input.name}
+        </p>
+        <p>
+          <strong className="text-gray-400">Stream ID:</strong>
+        </p>
+        <div className="flex items-center justify-between">
+          <p>{input.streamId}</p>
+          <CopyButton text={input.streamId} />
+        </div>
+      </div>
       <h3 className="text-lg font-semibold mt-4 mb-2 text-white">
         OUTPUTS POR DEFECTO
       </h3>
@@ -195,7 +198,7 @@ const InputCard = ({
           </h3>
           <div className="space-y-2">
             {localOutputs.map((output, index) => (
-              <div key={index} className="bg-gray-700 p-2 rounded">
+              <div key={index} className="bg-gray-700 p-3  rounded">
                 <div className="flex justify-between items-center">
                   <p>
                     <strong className="text-gray-300">Nombre:</strong>{" "}
@@ -231,7 +234,7 @@ const InputCard = ({
           <div className="flex justify-center mt-4">
             <button
               onClick={openModal}
-              className="flex justify-center p-2 bg-blue-600 text-white text-xl font-extrabold rounded hover:bg-blue-700 transition-colors"
+              className="flex justify-center px-4 py-2 bg-blue-600 text-white text-xl font-extrabold rounded hover:bg-blue-700 transition-colors"
             >
               +
             </button>

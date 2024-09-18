@@ -1,8 +1,8 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Restreamer Dashboard',
-  description: 'Dashboard para gestionar inputs y outputs de Restreamer',
+  title: 'StreamingPro Dashboard',
+  description: 'Dashboard para gestionar inputs y outputs de StreamingPro',
 }
 
 export default function RootLayout({ children }) {
