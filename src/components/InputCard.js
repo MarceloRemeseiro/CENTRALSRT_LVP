@@ -73,50 +73,49 @@ const InputCard = ({
     }))
   );
 
-const handleToggle = async (outputId, currentExecState, index) => {
-  console.log("Estado actual antes del toggle:", currentExecState);
-  console.log("Output ID:", outputId);
+  const handleToggle = async (outputId, currentExecState, index) => {
+    console.log("Estado actual antes del toggle:", currentExecState);
+    console.log("Output ID:", outputId);
 
-  // Determinamos si el estado debe cambiar a "start" o "stop" basándonos en el estado actual
-  let newState;
-  if (currentExecState === "running") {
-    newState = "stop"; // Si está en ejecución, lo apagamos
-  } else {
-    newState = "start"; // Si no está en ejecución, lo encendemos
-  }
+    // Determinamos si el estado debe cambiar a "start" o "stop" basándonos en el estado actual
+    let newState;
+    if (currentExecState === "running") {
+      newState = "stop"; // Si está en ejecución, lo apagamos
+    } else {
+      newState = "start"; // Si no está en ejecución, lo encendemos
+    }
 
-  console.log("Nuevo estado que se enviará:", newState);
+    console.log("Nuevo estado que se enviará:", newState);
 
-  try {
-    // Cambiamos el estado local primero para reflejar la acción del usuario
-    setLocalOutputs((prevOutputs) =>
-      prevOutputs.map((output, i) =>
-        i === index ? { ...output, isRunning: newState === "start" } : output
-      )
-    );
+    try {
+      // Cambiamos el estado local primero para reflejar la acción del usuario
+      setLocalOutputs((prevOutputs) =>
+        prevOutputs.map((output, i) =>
+          i === index ? { ...output, isRunning: newState === "start" } : output
+        )
+      );
 
-    // Enviamos la solicitud al servidor para cambiar el estado
-    await toggleOutputState(outputId, newState);
+      // Enviamos la solicitud al servidor para cambiar el estado
+      await toggleOutputState(outputId, newState);
 
-    // Refrescamos el estado local tras la respuesta del servidor
-    setLocalOutputs((prevOutputs) =>
-      prevOutputs.map((output, i) =>
-        i === index ? { ...output, state: newState } : output
-      )
-    );
+      // Refrescamos el estado local tras la respuesta del servidor
+      setLocalOutputs((prevOutputs) =>
+        prevOutputs.map((output, i) =>
+          i === index ? { ...output, state: newState } : output
+        )
+      );
 
-    console.log("Estado después del toggle:", newState);
-  } catch (error) {
-    console.error("Error al cambiar el estado del output:", error);
-    // En caso de error, revertimos el estado local
-    setLocalOutputs((prevOutputs) =>
-      prevOutputs.map((output, i) =>
-        i === index ? { ...output, isRunning: !output.isRunning } : output
-      )
-    );
-  }
-};
-
+      console.log("Estado después del toggle:", newState);
+    } catch (error) {
+      console.error("Error al cambiar el estado del output:", error);
+      // En caso de error, revertimos el estado local
+      setLocalOutputs((prevOutputs) =>
+        prevOutputs.map((output, i) =>
+          i === index ? { ...output, isRunning: !output.isRunning } : output
+        )
+      );
+    }
+  };
 
   return (
     <div className="bg-gray-800 text-gray-200 shadow-lg rounded-lg p-6">
@@ -149,7 +148,10 @@ const handleToggle = async (outputId, currentExecState, index) => {
           </div>
           <div className="col-span-2">
             <p className="text-gray-400 font-semibold">STREAMID</p>
-            <p className="text-sm text-gray-300 break-all">{`${input.streamId}.stream,mode:publish`}</p>
+            <p className="text-sm text-gray-300 break-all">
+              {`${input.streamId}.stream,mode:publish`}
+              <CopyButton text={`${input.streamId}.stream,mode:publish`} />
+            </p>
           </div>
         </div>
       </div>
@@ -165,7 +167,8 @@ const handleToggle = async (outputId, currentExecState, index) => {
         {input.description}
       </p> */}
       <p>
-        <strong className="text-gray-400">Stream ID:</strong> {input.streamId}
+        <strong className="text-gray-400">Stream ID:</strong> {input.streamId}{" "}
+        <CopyButton text={input.streamId} />
       </p>
       <h3 className="text-lg font-semibold mt-4 mb-2 text-white">
         OUTPUTS POR DEFECTO
@@ -183,9 +186,7 @@ const handleToggle = async (outputId, currentExecState, index) => {
           </div>
         ))}
       </div>
-      <div>
-        
-      </div>
+      <div></div>
 
       {localOutputs && localOutputs.length > 0 ? (
         <>
