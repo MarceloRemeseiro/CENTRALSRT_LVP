@@ -93,26 +93,38 @@ export default function Page() {
     }
   };
 
-  const toggleOutputState = async (outputId, currentState) => {
-    const newState = currentState === "running" ? "start" : "start";
-
+  const toggleOutputState = async (outputId, newState) => {
     try {
       const response = await fetch(`/api/process/${outputId}/state`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order: newState,
-        }),
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newState }),
       });
-
+  
       if (!response.ok) {
-        throw new Error("Error al cambiar el estado del output");
+        throw new Error('Failed to toggle output state');
       }
+  
+      const updatedOutput = await response.json();
+      
+      // Actualizar el estado global si es necesario
+      setInputs(prevInputs => 
+        prevInputs.map(input => ({
+          ...input,
+          customOutputs: input.customOutputs.map(output =>
+            output.id === outputId ? { ...output, state: updatedOutput.state } : output
+          )
+        }))
+      );
+  
+      return updatedOutput;
     } catch (error) {
-      console.error("Error al cambiar el estado del output:", error);
+      console.error('Error toggling output state:', error);
+      // Si hay un error, consideramos que el estado es "failed"
+      return { state: "failed" };
     }
   };
-
+  
   useEffect(() => {
     fetchInputs();
   }, []);

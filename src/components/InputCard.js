@@ -1,7 +1,10 @@
 "use client";
 import IframePlayer from "../components/IframePlayer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "../components/Modal";
+import ConfirmationModal from "../components/ConfirmationModal";
+import VideoPlayer from "../components/VideoPlayer";
+
 
 const CopyButton = ({ text }) => {
   const [copied, setCopied] = useState(false);
@@ -31,91 +34,138 @@ const InputCard = ({
   index,
   agregarPuntoPublicacion,
   eliminarPuntoPublicacion,
-  toggleOutputState, // Función para alternar el estado del output
+  toggleOutputState,
 }) => {
+  const [localInput, setLocalInput] = useState(input);
+  const [localOutputs, setLocalOutputs] = useState(input.customOutputs);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [nombre, setNombre] = useState("");
   const [url, setUrl] = useState("");
   const [key, setKey] = useState("");
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    message: "",
+    onConfirm: null,
+  });
+
+  useEffect(() => {
+    const fetchInputStatus = async () => {
+      try {
+        const response = await fetch(`/api/process/${input.id}/state`);
+        const data = await response.json();
+        setLocalInput((prevInput) => ({ ...prevInput, state: data.state }));
+      } catch (error) {
+        console.error("Error fetching input status:", error);
+      }
+    };
+
+    const intervalId = setInterval(fetchInputStatus, 5000);
+    return () => clearInterval(intervalId);
+  }, [input.id]);
+
+  const getStatusIcon = (state) => {
+    return state === "running" ? "🟢" : "🔴";
+  };
+
+  useEffect(() => {
+    setLocalOutputs(input.customOutputs);
+  }, [input.customOutputs]);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
-  const handleAgregarPunto = (e) => {
+  const handleAgregarPunto = async (e) => {
     e.preventDefault();
-    agregarPuntoPublicacion(input.id, { nombre, url, streamKey: key });
+    const nuevoOutput = await agregarPuntoPublicacion(input.id, {
+      nombre,
+      url,
+      streamKey: key,
+    });
+    if (nuevoOutput) {
+      setLocalOutputs([...localOutputs, nuevoOutput]);
+    }
     setNombre("");
     setUrl("");
     setKey("");
     closeModal();
   };
 
-  const getStatusIcon = (state) => {
-    return state === "running" ? "🟢" : "🔴";
+  const handleEliminarPunto = (outputId) => {
+    setConfirmationModal({
+      isOpen: true,
+      message: "¿Seguro quieres eliminar este Punto de publicación?",
+      onConfirm: () => performEliminarPunto(outputId),
+    });
+  };
+
+  const performEliminarPunto = async (outputId) => {
+    await eliminarPuntoPublicacion(input.id, outputId);
+    setLocalOutputs(localOutputs.filter((output) => output.id !== outputId));
+  };
+
+  const handleToggle = async (outputId, currentState, index) => {
+    if (currentState === "running") {
+      // Si está encendido, mostrar confirmación antes de apagar
+      setConfirmationModal({
+        isOpen: true,
+        message: "¿Seguro quieres apagar el Punto de publicación?",
+        onConfirm: () => performToggle(outputId, currentState, index),
+      });
+    } else {
+      // Si está apagado, encender directamente sin confirmación
+      performToggle(outputId, currentState, index);
+    }
+  };
+
+  const performToggle = async (outputId, currentState, index) => {
+    const newState = currentState === "running" ? "stop" : "start";
+
+    try {
+      setLocalOutputs((prevOutputs) =>
+        prevOutputs.map((output, i) =>
+          i === index
+            ? { ...output, isTogglingOn: newState === "start" }
+            : output
+        )
+      );
+
+      const updatedOutput = await toggleOutputState(outputId, newState);
+
+      setLocalOutputs((prevOutputs) =>
+        prevOutputs.map((output, i) =>
+          i === index
+            ? { ...output, state: updatedOutput.state, isTogglingOn: undefined }
+            : output
+        )
+      );
+    } catch (error) {
+      console.error("Error al cambiar el estado del output:", error);
+      setLocalOutputs((prevOutputs) =>
+        prevOutputs.map((output, i) =>
+          i === index ? { ...output, isTogglingOn: undefined } : output
+        )
+      );
+    }
   };
 
   // Aquí definimos el estilo para el switch
-  const switchStyle = (isOn) =>
-    `relative inline-flex h-6 w-11 items-center rounded-full transition ${
-      isOn ? "bg-green-500" : "bg-gray-300"
-    }`;
-
-  const circleStyle = (isOn) =>
-    `inline-block h-4 w-4 rounded-full bg-white transition transform ${
-      isOn ? "translate-x-6" : "translate-x-1"
-    }`;
-
-  // Definimos un estado local para manejar el estado de cada output
-  const [localOutputs, setLocalOutputs] = useState(
-    input.customOutputs.map((output) => ({
-      ...output,
-      isRunning: output.state === "running", // Usamos el estado inicial de cada output
-    }))
-  );
-
-  const handleToggle = async (outputId, currentExecState, index) => {
-    console.log("Estado actual antes del toggle:", currentExecState);
-    console.log("Output ID:", outputId);
-
-    // Determinamos si el estado debe cambiar a "start" o "stop" basándonos en el estado actual
-    let newState;
-    if (currentExecState === "running") {
-      newState = "stop"; // Si está en ejecución, lo apagamos
-    } else {
-      newState = "start"; // Si no está en ejecución, lo encendemos
-    }
-
-    console.log("Nuevo estado que se enviará:", newState);
-
-    try {
-      // Cambiamos el estado local primero para reflejar la acción del usuario
-      setLocalOutputs((prevOutputs) =>
-        prevOutputs.map((output, i) =>
-          i === index ? { ...output, isRunning: newState === "start" } : output
-        )
-      );
-
-      // Enviamos la solicitud al servidor para cambiar el estado
-      await toggleOutputState(outputId, newState);
-
-      // Refrescamos el estado local tras la respuesta del servidor
-      setLocalOutputs((prevOutputs) =>
-        prevOutputs.map((output, i) =>
-          i === index ? { ...output, state: newState } : output
-        )
-      );
-
-      console.log("Estado después del toggle:", newState);
-    } catch (error) {
-      console.error("Error al cambiar el estado del output:", error);
-      // En caso de error, revertimos el estado local
-      setLocalOutputs((prevOutputs) =>
-        prevOutputs.map((output, i) =>
-          i === index ? { ...output, isRunning: !output.isRunning } : output
-        )
-      );
-    }
+  const getSwitchColor = (output) => {
+    if (output.state === "failed") return "bg-red-500";
+    if (output.isTogglingOn) return "bg-gray-300";
+    return output.state === "running" ? "bg-green-500" : "bg-gray-300";
   };
+
+  const switchStyle = (output) =>
+    `relative inline-flex h-6 w-11 items-center rounded-full transition ${getSwitchColor(
+      output
+    )}`;
+
+  const circleStyle = (output) =>
+    `inline-block h-4 w-4 rounded-full bg-white transition transform ${
+      output.state === "running" || output.isTogglingOn
+        ? "translate-x-6"
+        : "translate-x-1"
+    }`;
 
   return (
     <div className="bg-gray-800 text-gray-200 shadow-lg rounded-lg p-6">
@@ -123,7 +173,7 @@ const InputCard = ({
         <h2 className="text-xl font-bold mb-2 text-white">
           SRT INPUT # {index + 1}
         </h2>
-        <span className="text-2xl mb-2">{getStatusIcon(input.state)}</span>
+        <span className="text-2xl mb-2">{getStatusIcon(localInput.state)}</span>
       </div>
 
       <div className="bg-gray-700 p-4 rounded-lg mb-4">
@@ -158,8 +208,17 @@ const InputCard = ({
         </div>
       </div>
 
+      {/* <div className="mb-2">
+        <IframePlayer
+          url={localInput.defaultOutputs.HTML}
+          isRunning={localInput.state === "running"}
+        />
+      </div> */}
       <div className="mb-2">
-        <IframePlayer url={input.defaultOutputs.HTML} />
+        <VideoPlayer 
+          url={localInput.defaultOutputs.HLS} 
+          isRunning={localInput.state === "running"}
+        />
       </div>
       <div className="px-3">
         <p>
@@ -198,31 +257,24 @@ const InputCard = ({
           </h3>
           <div className="space-y-2">
             {localOutputs.map((output, index) => (
-              <div key={index} className="bg-gray-700 p-3  rounded">
+              <div key={output.id} className="bg-gray-700 p-3 rounded">
                 <div className="flex justify-between items-center">
                   <p>
                     <strong className="text-gray-300">Nombre:</strong>{" "}
                     {output.name}
                   </p>
-                  {/* Interruptor para encender/apagar el output */}
                   <div
-                    className={switchStyle(output.isRunning)}
-                    onClick={() => {
-                      console.log(
-                        "Output State antes del toggle:",
-                        output.state
-                      ); // Comprobamos el estado actual
-                      handleToggle(output.id, output.state, index);
-                    }}
+                    className={switchStyle(output)}
+                    onClick={() => handleToggle(output.id, output.state, index)}
                   >
-                    <span className={circleStyle(output.isRunning)} />
+                    <span className={circleStyle(output)} />
                   </div>
                 </div>
                 <p className="text-sm break-all text-gray-400">
                   {output.address}
                 </p>
                 <button
-                  onClick={() => eliminarPuntoPublicacion(input.id, output.id)}
+                  onClick={() => handleEliminarPunto(output.id)}
                   className="mt-2 bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700 transition-colors"
                 >
                   Eliminar
@@ -296,6 +348,18 @@ const InputCard = ({
           </form>
         </Modal>
       )}
+      {/* Modal de confirmación */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() =>
+          setConfirmationModal({ ...confirmationModal, isOpen: false })
+        }
+        onConfirm={() => {
+          confirmationModal.onConfirm();
+          setConfirmationModal({ ...confirmationModal, isOpen: false });
+        }}
+        message={confirmationModal.message}
+      />
     </div>
   );
 };

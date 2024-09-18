@@ -1,30 +1,54 @@
 import { NextResponse } from "next/server";
 import { authenticatedRequest } from "../../../../../services/restreamer"; // Asegúrate de tener este servicio configurado
 
-export async function PUT(request, { params }) {
-  const { id } = params; // El ID del output viene como parámetro
-  const { order } = await request.json(); // Obtenemos el exec y order desde el body de la solicitud
-  console.log(order); // Para depuración
+export async function GET(request, { params }) {
+  const { id } = params;
 
   try {
-    // Realizamos la solicitud PUT para cambiar el estado en el proceso de la API
+    const processData = await authenticatedRequest(
+      "GET",
+      `/api/v3/process/${id}`
+    );
+
+    return NextResponse.json({ state: processData.state.exec });
+  } catch (error) {
+    console.error("Error fetching process state:", error);
+    return NextResponse.json(
+      { error: "Error fetching process state" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request, { params }) {
+  const { id } = params;
+  const { order } = await request.json();
+  console.log(order);
+  
+
+  try {
     const response = await authenticatedRequest(
       "PUT",
-      `/api/v3/process/${id}/command`, // Endpoint de la API de Restreamer
+      `/api/v3/process/${id}/command`,
       {
         command: order,
       }
     );
 
-    // Devolvemos la respuesta exitosa si la operación fue bien
-    return NextResponse.json({
-      message: "Estado del proceso actualizado correctamente",
-      response,
-    });
+    // Esperar un momento para que el cambio de estado se aplique
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Obtener el estado actualizado
+    const updatedProcess = await authenticatedRequest(
+      "GET",
+      `/api/v3/process/${id}`
+    );
+
+    return NextResponse.json({ state: updatedProcess.state.exec });
   } catch (error) {
-    console.error("Error al actualizar el estado del proceso:", error.message);
+    console.error("Error toggling process state:", error);
     return NextResponse.json(
-      { message: "Error al actualizar el estado del proceso" },
+      { error: "Error toggling process state" },
       { status: 500 }
     );
   }
