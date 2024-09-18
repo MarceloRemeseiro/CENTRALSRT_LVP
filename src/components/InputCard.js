@@ -150,7 +150,7 @@ const InputCard = ({
             <p className="text-gray-400 font-semibold">STREAMID</p>
             <p className="text-sm text-gray-300 break-all">
               {`${input.streamId}.stream,mode:publish`}
-              
+              <CopyButton text={`${input.streamId}.stream,mode:publish`} />
             </p>
           </div>
         </div>
@@ -168,7 +168,7 @@ const InputCard = ({
       </p> */}
       <p>
         <strong className="text-gray-400">Stream ID:</strong> {input.streamId}{" "}
-        
+        <CopyButton text={input.streamId} />
       </p>
       <h3 className="text-lg font-semibold mt-4 mb-2 text-white">
         OUTPUTS POR DEFECTO
