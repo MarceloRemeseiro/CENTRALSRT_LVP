@@ -1,31 +1,39 @@
 "use client";
+import { useState, useEffect } from "react";
+import InputCard from "../components/InputCard"; // El componente hijo
 
-import React, { useEffect, useState } from "react";
-import { restreamerAPIConnection } from "../services/restreamer";
-import InputCard from "../components/InputCard";
-import ModalForm from "@/components/ModalForm";
-
-export default function Home() {
+export default function Page() {
   const [inputs, setInputs] = useState([]);
-  const [deleteId, setDeleteId] = useState(""); // Nuevo estado para la ID que se desea eliminar
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  console.log(inputs);
-
-  useEffect(() => {
-    fetchInputs();
-  }, []);
-
+  // Fetch para obtener los inputs y outputs
   const fetchInputs = async () => {
     try {
-      const data = await restreamerAPIConnection();
-      setInputs(data);
+      const response = await fetch("/api/process/inputs", {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al recuperar los inputs");
+      }
+
+      const data = await response.json();
+
+      // Ordenamos los inputs por el nombre aquí
+      const sortedData = data.sort((a, b) => a.name.localeCompare(b.name));
+
+      setInputs(sortedData || []); // Aseguramos que siempre sea una lista
+      setLoading(false);
     } catch (error) {
-      console.error("Error fetching inputs:", error);
+      console.error("Error al cargar los inputs:", error);
+      setError("Error al cargar los inputs");
+      setLoading(false);
     }
   };
 
-  const handleUpdateInput = (updatedInput) => {
+  // Función para actualizar un input
+  const updateInput = (updatedInput) => {
     setInputs((prevInputs) =>
       prevInputs.map((input) =>
         input.id === updatedInput.id ? updatedInput : input
@@ -33,116 +41,99 @@ export default function Home() {
     );
   };
 
-  // Nueva función para eliminar el output
-  const eliminarPuntoPublicacion = async (outputId) => {
-
+  // Función para agregar un punto de publicación
+  const agregarPuntoPublicacion = async (id, { nombre, url, streamKey }) => {
     try {
-      const response = await fetch(`/api/process/${outputId}/outputs/`, {
-        method: "DELETE",
+      const response = await fetch(`/api/process/${id}/outputs`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: nombre,
+          address: url,
+          streamKey: streamKey,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete output");
+        throw new Error("Error al agregar punto de publicación");
       }
 
-      // Actualizar el estado de los inputs si es necesario
-      console.log("Output eliminado con éxito");
+      const createdOutput = await response.json();
+      updateInput({
+        ...inputs.find((input) => input.id === id),
+        customOutputs: [
+          ...(inputs.find((input) => input.id === id).customOutputs || []),
+          createdOutput,
+        ],
+      });
+    } catch (error) {
+      console.error("Error al agregar el punto de publicación:", error);
+    }
+  };
+
+  // Función para eliminar un punto de publicación
+  const eliminarPuntoPublicacion = async (inputId, outputId) => {
+    try {
+      const response = await fetch(`/api/process/${outputId}/outputs`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al eliminar el punto de publicación");
+      }
+
+      updateInput({
+        ...inputs.find((input) => input.id === inputId),
+        customOutputs: inputs
+          .find((input) => input.id === inputId)
+          .customOutputs.filter((output) => output.id !== outputId),
+      });
     } catch (error) {
       console.error("Error al eliminar el punto de publicación:", error);
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (deleteId.trim() !== "") {
-      // Elimina el prefijo 'restreamer-ui:egress:rtmp:' si está presente
-      eliminarPuntoPublicacion(deleteId);
-      setDeleteId(""); // Limpiar el campo después de eliminar
-    }
-  };
+  const toggleOutputState = async (outputId, currentState) => {
+    const newState = currentState === "running" ? "start" : "start";
 
-  const handleCreateProcess = async (metadata) => {
     try {
-      const response = await fetch("/api/process", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(metadata),
-      });
-
-      if (!response.ok) {
-        throw new Error("Error al crear el proceso");
-      }
-
-      const data = await response.json();
-      console.log("Proceso creado:", data);
-
-      // También puedes hacer un POST al endpoint de metadata si es necesario
-      await fetch(`/api/process/${data.id}/metadata`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch(`/api/process/${outputId}/state`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: metadata.nombre,
-          description: metadata.descripcion,
+          order: newState,
         }),
       });
 
-      console.log("Metadata actualizada.");
+      if (!response.ok) {
+        throw new Error("Error al cambiar el estado del output");
+      }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error al cambiar el estado del output:", error);
     }
   };
+
+  useEffect(() => {
+    fetchInputs();
+  }, []);
+
+  if (loading) return <p>Cargando...</p>;
+  if (error) return <p>{error}</p>;
 
   return (
     <main className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-center">
         StreamingPro Inputs
       </h1>
-      <div className="mb-8">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-green-500 text-white px-4 py-2 rounded-lg"
-        >
-          Crear nuevo proceso
-        </button>
-
-        {isModalOpen && (
-          <ModalForm
-            onClose={() => setIsModalOpen(false)}
-            onSubmit={handleCreateProcess}
-          />
-        )}
-      </div>
-      {/* Formulario para eliminar outputs */}
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <input
-            type="text"
-            value={deleteId}
-            onChange={(e) => setDeleteId(e.target.value)}
-            placeholder="Ingresa el ID del output"
-            className="p-2 border rounded bg-gray-800 text-white"
-          />
-          <button
-            type="submit"
-            className="bg-red-600 text-white font-semibold px-4 py-2 rounded hover:bg-red-700 transition-colors"
-          >
-            Eliminar Output
-          </button>
-        </div>
-      </form>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {inputs.map((input, index) => (
           <InputCard
             key={input.id}
             input={input}
-            index={index + 1}
-            onUpdateInput={handleUpdateInput}
+            index={index}
+            agregarPuntoPublicacion={agregarPuntoPublicacion}
+            eliminarPuntoPublicacion={eliminarPuntoPublicacion}
+            toggleOutputState={toggleOutputState} // Pasamos la función de cambio de estado al hijo
           />
         ))}
       </div>

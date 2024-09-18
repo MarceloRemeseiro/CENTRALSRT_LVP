@@ -2,7 +2,17 @@ import { NextResponse } from "next/server";
 import { authenticatedRequest } from "../../../../../services/restreamer";
 import { uuid } from "uuidv4";
 
-
+export async function GET() {
+  try {
+    const data = await restreamerAPIConnection();
+    console.log(data);
+    
+    
+    return NextResponse.json(data); // Devuelve los datos obtenidos de la API de Restreamer
+  } catch (error) {
+    return NextResponse.json({ message: "Error al obtener los datos" }, { status: 500 });
+  }
+}
 
 export async function POST(request, { params }) {
   const { id } = params;
@@ -57,7 +67,10 @@ export async function POST(request, { params }) {
       stale_timeout_seconds: 30,
     };
 
-    console.log("Creando proceso en Restreamer API:", JSON.stringify(newOutput, null, 2));
+    console.log(
+      "Creando proceso en Restreamer API:",
+      JSON.stringify(newOutput, null, 2)
+    );
 
     // Crear el proceso
     const createdEgressProcess = await authenticatedRequest(
@@ -116,7 +129,6 @@ export async function POST(request, { params }) {
     };
 
     return NextResponse.json(formattedOutput);
-
   } catch (error) {
     console.error("Detalles del error:", error.response?.data.details);
     return NextResponse.json(
@@ -131,14 +143,16 @@ export async function POST(request, { params }) {
 // Eliminar un output por ID
 export async function DELETE(request, { params }) {
   const { id } = params;
-  
 
   try {
     // Eliminar el prefijo no deseado si está presente en el ID
     console.log(`Eliminando output con ID: ${params}`);
 
     // Realiza la solicitud DELETE al servidor Restreamer
-    const response = await authenticatedRequest("DELETE", `/api/v3/process/${id}`);
+    const response = await authenticatedRequest(
+      "DELETE",
+      `/api/v3/process/${id}`
+    );
 
     // Si la eliminación es exitosa
     return NextResponse.json({ message: "Output eliminado con éxito" });
