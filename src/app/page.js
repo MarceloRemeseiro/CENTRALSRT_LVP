@@ -133,7 +133,7 @@ export default function Page() {
             index={index}
             agregarPuntoPublicacion={agregarPuntoPublicacion}
             eliminarPuntoPublicacion={eliminarPuntoPublicacion}
-            toggleOutputState={toggleOutputState} // Pasamos la función de cambio de estado al hijo
+            toggleOutputState={toggleOutputState}
           />
         ))}
       </div>
