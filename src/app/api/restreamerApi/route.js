@@ -4,6 +4,7 @@ import { restreamerAPIConnection } from "../../../services/restreamer.js";
 export async function GET() {
   try {
     const data = await restreamerAPIConnection();
+    
     return NextResponse.json(data); // Devuelve los datos obtenidos de la API de Restreamer
   } catch (error) {
     return NextResponse.json({ message: "Error al obtener los datos" }, { status: 500 });

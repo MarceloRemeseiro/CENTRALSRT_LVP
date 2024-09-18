@@ -6,7 +6,6 @@ const prisma = new PrismaClient()
 export async function POST(request) {
   try {
     const text = await request.text();
-    console.log("Received request body:", text);
 
     let data;
     try {

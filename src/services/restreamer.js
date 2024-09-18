@@ -29,6 +29,7 @@ async function login() {
     );
     accessToken = response.data.access_token;
     refreshToken = response.data.refresh_token;
+    
   } catch (error) {
     console.error("Error al obtener el access token:", error.message);
     throw error;
@@ -60,6 +61,7 @@ async function refreshAccessToken() {
     );
     accessToken = response.data.access_token;
     refreshToken = response.data.refresh_token;
+    
   } catch (error) {
     console.error("Error al refrescar el access token:", error.message);
     // Si falla el refresco, volver a hacer login
@@ -71,10 +73,11 @@ async function refreshAccessToken() {
 
 // Función para hacer solicitudes autenticadas
 async function authenticatedRequest(method, url, data = null) {
+  
   if (!accessToken) {
     await login();
   }
-
+  
   try {
     const response = await axios({
       method,
@@ -111,78 +114,81 @@ async function authenticatedRequest(method, url, data = null) {
 // Función de prueba para obtener los procesos
 export async function restreamerAPIConnection() {
   try {
+    
     const data = await authenticatedRequest("GET", "/api/v3/process");
-
+    
     const processedData = data.reduce((acc, process) => {
-      if (
-        process.id.includes(":ingest:") &&
-        !process.id.includes("_snapshot")
-      ) {
-        const streamId = process.reference;
-        const inputInfo = {
-          id: process.id,
-          name: process.metadata?.["restreamer-ui"]?.meta?.name || "Sin nombre",
-          description:
-            process.metadata?.["restreamer-ui"]?.meta?.description ||
-            "Sin descripción",
-          createdAt: process.created_at, // Guardamos el timestamp sin formatear
-          createdAtFormatted: new Date(
-            process.created_at * 1000
-          ).toLocaleString(), // Versión formateada para mostrar
-          streamId: streamId,
-          state: process.state?.exec || "Desconocido",
-          defaultOutputs: {
-            HLS: `https://${RESTREAMER__URL}/memfs/${streamId}.m3u8`,
-            SRT: `srt://${RESTREAMER__URL}:${port}/?mode=caller&transtype=live&streamid=${streamId},mode:request`,
-            RTMP: `rtmp://${RESTREAMER__URL}/${streamId}.stream`,
-            HTML: `https://${RESTREAMER__URL}/${streamId}.html`,
-          },
-          customOutputs: [],
-        };
-
-        // Buscar los outputs personalizados
-        data.forEach((potentialOutput) => {
-          if (
-            potentialOutput.id.includes(":egress:") &&
-            potentialOutput.reference === streamId
-          ) {
-            const address =
-              potentialOutput.config?.output?.[0]?.address ||
-              "Dirección no disponible";
-            const outputInfo = {
-              name:
-                potentialOutput.metadata?.["restreamer-ui"]?.name ||
-                "Sin nombre",
-              address: address,
-              state: potentialOutput.state?.exec || "Desconocido",
+      if (process.type === "ffmpeg") {
+        if (
+          process.id.includes(":ingest:") &&
+          !process.id.includes("_snapshot")
+        ) {
+          const streamId = process.reference;
+          const inputInfo = {
+            id: process.id,
+            name:
+              process.metadata?.["restreamer-ui"]?.meta?.name || "Sin nombre",
+              description:
+              process.metadata?.["restreamer-ui"]?.meta?.description ||
+              "Sin descripción",
+              createdAt: process.created_at,
+              createdAtFormatted: new Date(
+                process.created_at * 1000
+              ).toLocaleString(),
+              streamId: streamId,
+              state: process.state?.exec || "Desconocido",
+              defaultOutputs: {
+                HLS: `https://${RESTREAMER__URL}/memfs/${streamId}.m3u8`,
+                SRT: `srt://${RESTREAMER__URL}:${port}/?mode=caller&transtype=live&streamid=${streamId},mode:request`,
+                RTMP: `rtmp://${RESTREAMER__URL}/${streamId}.stream`,
+                HTML: `https://${RESTREAMER__URL}/${streamId}.html`,
+              },
+              customOutputs: [],
             };
-
-            // Si la dirección es RTMP, añadir la clave
-            if (address.toLowerCase().includes("rtmp")) {
-              outputInfo.key =
-                potentialOutput.metadata?.["restreamer-ui"]?.outputs?.[0]
-                  ?.options?.[5] || "--";
+            acc.push(inputInfo);
+          } else if (process.id.includes(":egress:")) {
+            // Es un output
+            const parentInput = acc.find(
+              (input) => input.streamId === process.reference
+            );
+            if (parentInput) {
+              let key = "--";
+              const options = process.output?.[0]?.options;
+              if (Array.isArray(options)) {
+                const rtmpPlaypathIndex = options.indexOf("-rtmp_playpath");
+                if (
+                  rtmpPlaypathIndex !== -1 &&
+                  rtmpPlaypathIndex + 1 < options.length
+                ) {
+                  key = options[rtmpPlaypathIndex + 1];
+                }
+              }
+              
+              const outputInfo = {
+                id: process.id,
+                name: process.metadata?.["restreamer-ui"]?.name || "Sin nombre",
+                address:
+                process.config?.output?.[0]?.address ||
+                "Dirección no disponible",
+                state: process.state?.exec || "Desconocido",
+                key: process.config?.output?.[0]?.options[13],
+              };
+              
+              parentInput.customOutputs.push(outputInfo);
             }
-
-            inputInfo.customOutputs.push(outputInfo);
           }
-        });
-
-        acc.push(inputInfo);
-      }
-      return acc;
-    }, []);
-
-    // Ordenar los datos por fecha de creación (de más reciente a más antiguo)
-    processedData.sort((a, b) => b.createdAt - a.createdAt);
-
-    return processedData;
-  } catch (error) {
-    console.error(
-      "Error al conectarse con la API de Restreamer:",
-      error.message
-    );
-    throw error;
+        }
+        return acc;
+      }, []);
+      
+      return processedData;
+    } catch (error) {
+      console.error(
+        "Error al conectarse con la API de Restreamer:",
+        error.message
+      );
+      throw error;
+    }
   }
-}
-export { authenticatedRequest };
+  export { authenticatedRequest };
+  

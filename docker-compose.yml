@@ -2,9 +2,11 @@ version: '3'
 
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: central-srt
-    command: sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL to be ready...'; sleep 1; done; echo 'MySQL is ready!'; npx prisma generate && npx prisma migrate deploy && npm run build && npm run start"
+    command: sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL to be ready...';sleep 1;done;echo 'MySQL is ready!';npx prisma generate && npx prisma migrate deploy && if [ "$NODE_ENV" = "production" ]; then npm run build && npm run start; else npm run dev; fi "
     ports:
       - '3000:3000'
     volumes:
@@ -12,6 +14,7 @@ services:
       - /app/node_modules
     environment:
       - DATABASE_URL=mysql://root:1122@db:3306/dbcentral
+      - NODE_ENV=${NODE_ENV:-development}
     depends_on:
       - db
     networks:
@@ -33,6 +36,7 @@ services:
 
 volumes:
   db_data:
+
 
 networks:
   app-network:
