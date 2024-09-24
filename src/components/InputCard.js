@@ -1,33 +1,12 @@
-"use client";
-import IframePlayer from "../components/IframePlayer";
-import { useState, useEffect } from "react";
-import Modal from "../components/Modal";
-import ConfirmationModal from "../components/ConfirmationModal";
-import VideoPlayer from "../components/VideoPlayer";
-
-
-const CopyButton = ({ text }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Error al copiar el texto: ", err);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors"
-    >
-      {copied ? "¡Copiado!" : "Copiar"}
-    </button>
-  );
-};
+import React, { useState, useEffect } from "react";
+import IframePlayer from "./IframePlayer";
+import Modal from "./Modal";
+import ConfirmationModal from "./ConfirmationModal";
+import VideoPlayer from "./VideoPlayer";
+import CopyButton from "./CopyButton";
+import OutputDefault from "./OutputDefault";
+import CustomOutputs from "./CustomOutputs";
+import InputInfo from "./InputInfo";
 
 const InputCard = ({
   input,
@@ -62,10 +41,6 @@ const InputCard = ({
     const intervalId = setInterval(fetchInputStatus, 5000);
     return () => clearInterval(intervalId);
   }, [input.id]);
-
-  const getStatusIcon = (state) => {
-    return state === "running" ? "🟢" : "🔴";
-  };
 
   useEffect(() => {
     setLocalOutputs(input.customOutputs);
@@ -105,14 +80,12 @@ const InputCard = ({
 
   const handleToggle = async (outputId, currentState, index) => {
     if (currentState === "running") {
-      // Si está encendido, mostrar confirmación antes de apagar
       setConfirmationModal({
         isOpen: true,
         message: "¿Seguro quieres apagar el Punto de publicación?",
         onConfirm: () => performToggle(outputId, currentState, index),
       });
     } else {
-      // Si está apagado, encender directamente sin confirmación
       performToggle(outputId, currentState, index);
     }
   };
@@ -148,24 +121,9 @@ const InputCard = ({
     }
   };
 
-  // Aquí definimos el estilo para el switch
-  const getSwitchColor = (output) => {
-    if (output.state === "failed") return "bg-red-500";
-    if (output.isTogglingOn) return "bg-gray-300";
-    return output.state === "running" ? "bg-green-500" : "bg-gray-300";
+  const getStatusIcon = (state) => {
+    return state === "running" ? "🟢" : "🔴";
   };
-
-  const switchStyle = (output) =>
-    `relative inline-flex h-6 w-11 items-center rounded-full transition ${getSwitchColor(
-      output
-    )}`;
-
-  const circleStyle = (output) =>
-    `inline-block h-4 w-4 rounded-full bg-white transition transform ${
-      output.state === "running" || output.isTogglingOn
-        ? "translate-x-6"
-        : "translate-x-1"
-    }`;
 
   return (
     <div className="bg-gray-800 text-gray-200 shadow-lg rounded-lg p-6">
@@ -208,100 +166,29 @@ const InputCard = ({
         </div>
       </div>
 
-      {/* <div className="mb-2">
-        <IframePlayer
-          url={localInput.defaultOutputs.HTML}
-          isRunning={localInput.state === "running"}
-        />
-      </div> */}
       <div className="mb-2">
-        <VideoPlayer 
-          url={localInput.defaultOutputs.HLS} 
+        <VideoPlayer
+          url={localInput.defaultOutputs.HLS}
           isRunning={localInput.state === "running"}
         />
       </div>
-      <div className="px-3">
-        <p>
-          <strong className="text-gray-400">Nombre:</strong> {input.name}
-        </p>
-        <p>
-          <strong className="text-gray-400">Stream ID:</strong>
-        </p>
-        <div className="flex items-center justify-between">
-          <p>{input.streamId}</p>
-          <CopyButton text={input.streamId} />
-        </div>
-      </div>
-      <h3 className="text-lg font-semibold mt-4 mb-2 text-white">
-        OUTPUTS POR DEFECTO
-      </h3>
-      <div className="bg-gray-700 p-3 rounded mb-4">
-        {Object.entries(input.defaultOutputs).map(([key, value]) => (
-          <div key={key} className="mb-2 flex items-center justify-between">
-            <div>
-              <p>
-                <strong className="text-gray-300">{key}:</strong>
-              </p>
-              <p className="text-sm break-all text-gray-400">{value}</p>
-            </div>
-            <CopyButton text={value} />
-          </div>
-        ))}
-      </div>
-      <div></div>
 
-      {localOutputs && localOutputs.length > 0 ? (
-        <>
-          <h3 className="text-lg font-semibold mt-4 mb-2 text-white">
-            PUNTOS DE PUBLICACIÓN
-          </h3>
-          <div className="space-y-2">
-            {localOutputs.map((output, index) => (
-              <div key={output.id} className="bg-gray-700 p-3 rounded">
-                <div className="flex justify-between items-center">
-                  <p>
-                    <strong className="text-gray-300">Nombre:</strong>{" "}
-                    {output.name}
-                  </p>
-                  <div
-                    className={switchStyle(output)}
-                    onClick={() => handleToggle(output.id, output.state, index)}
-                  >
-                    <span className={circleStyle(output)} />
-                  </div>
-                </div>
-                <p className="text-sm break-all text-gray-400">
-                  {output.address}
-                </p>
-                <button
-                  onClick={() => handleEliminarPunto(output.id)}
-                  className="mt-2 bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700 transition-colors"
-                >
-                  Eliminar
-                </button>
-              </div>
-            ))}
-          </div>
-          {/* Botón para agregar más puntos de publicación debajo de los existentes */}
-          <div className="flex justify-center mt-4">
-            <button
-              onClick={openModal}
-              className="flex justify-center px-4 py-2 bg-blue-600 text-white text-xl font-extrabold rounded hover:bg-blue-700 transition-colors"
-            >
-              +
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="flex justify-center">
-          <button
-            onClick={openModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-          >
-            Agregar Punto de Publicación
-          </button>
-        </div>
-      )}
+      <InputInfo name={input.name} streamId={input.streamId} />
+
+      <OutputDefault defaultOutputs={input.defaultOutputs} />
+      <CustomOutputs
+        localOutputs={localOutputs}
+        handleEliminarPunto={handleEliminarPunto}
+        handleToggle={handleToggle}
+      />
+      <div className="flex justify-center mt-4">
+        <button
+          onClick={openModal}
+          className="flex justify-center px-4 py-2 bg-blue-600 text-white text-xl font-extrabold rounded hover:bg-blue-700 transition-colors"
+        >
+          +
+        </button>
+      </div>
 
       {isModalOpen && (
         <Modal onClose={closeModal}>
@@ -348,7 +235,6 @@ const InputCard = ({
           </form>
         </Modal>
       )}
-      {/* Modal de confirmación */}
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
         onClose={() =>
