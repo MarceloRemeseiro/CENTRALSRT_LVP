@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import VideoPlayer from "./VideoPlayer";
 import InputInfo from "./InputInfo";
 import OutputDefault from "./OutputDefault";
@@ -17,8 +17,8 @@ const InputDetails = ({
 }) => {
   const [localInput, setLocalInput] = useState(input);
   const [localOutputs, setLocalOutputs] = useState(input.customOutputs || []);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [videoRefreshTrigger, setVideoRefreshTrigger] = useState(0);
   const [newOutput, setNewOutput] = useState({
     nombre: "",
     url: "",
@@ -29,11 +29,42 @@ const InputDetails = ({
     message: "",
     onConfirm: null,
   });
+  const refreshTimeoutRef = useRef(null);
+
+  const fetchInputStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/process/${input.id}/state`);
+      const data = await response.json();
+      setLocalInput((prevInput) => {
+        if (prevInput.state !== data.state) {
+          if (data.state === "running") {
+            // Configurar un timeout para refrescar el video después de 3 segundos
+            if (refreshTimeoutRef.current) {
+              clearTimeout(refreshTimeoutRef.current);
+            }
+            refreshTimeoutRef.current = setTimeout(() => {
+              setVideoRefreshTrigger(prev => prev + 1);
+            }, 3000);
+          }
+          return { ...prevInput, ...data };
+        }
+        return prevInput;
+      });
+    } catch (error) {
+      console.error("Error fetching input status:", error);
+    }
+  }, [input.id]);
 
   useEffect(() => {
-    setLocalInput(input);
-    setLocalOutputs(input.customOutputs || []);
-  }, [input]);
+    fetchInputStatus();
+    const intervalId = setInterval(fetchInputStatus, 5000);
+    return () => {
+      clearInterval(intervalId);
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [fetchInputStatus]);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -94,35 +125,28 @@ const InputDetails = ({
     );
   };
 
-  const getStatusIcon = (state) => {
-    return state === "running" ? "🟢" : "🔴";
-  };
-
   return (
     <div className="flex flex-col md:flex-row gap-6">
-      {/* Columna izquierda */}
       <div className="md:w-2/3 space-y-6">
-        {/* Input Data */}
         <div className="bg-gray-800 rounded-lg shadow-lg">
           <div className="flex justify-between p-4 ">
             <Link href="/" className="text-3xl">
               ⬅️
             </Link>
             <h2 className="text-3xl font-bold">{localInput.name}</h2>
-            <span className="text-2xl">{getStatusIcon(localInput.state)}</span>
+            <span className="text-2xl">{localInput.state === "running" ? "🟢" : "🔴"}</span>
           </div>
         </div>
 
-        {/* Video Player */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-bold mb-4 text-white">Video Preview</h2>
           <VideoPlayer
             url={localInput.defaultOutputs.HLS}
             isRunning={localInput.state === "running"}
+            refreshTrigger={videoRefreshTrigger}
           />
         </div>
 
-        {/* Default Outputs */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
           <InputData input={localInput} />
           <InputInfo name={localInput.name} streamId={localInput.streamId} />
@@ -130,7 +154,6 @@ const InputDetails = ({
         </div>
       </div>
 
-      {/* Columna derecha */}
       <div className="md:w-1/3">
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-bold mb-4 text-white">Custom Outputs</h2>
@@ -150,9 +173,7 @@ const InputDetails = ({
 
       {isModalOpen && (
         <Modal onClose={closeModal}>
-          <h2 className="text-xl font-bold mb-4">
-         RTMP
-          </h2>
+          <h2 className="text-xl font-bold mb-4">RTMP</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-gray-400">Nombre</label>

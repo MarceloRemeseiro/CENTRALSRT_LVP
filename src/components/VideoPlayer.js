@@ -1,66 +1,60 @@
-import React, { useEffect, useRef } from "react";
-import Hls from "hls.js";
+import React, { useEffect, useRef, useState } from 'react';
+import Hls from 'hls.js';
 
-const VideoPlayer = ({ url, isRunning }) => {
+const VideoPlayer = ({ url, isRunning, refreshTrigger }) => {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
+  const [key, setKey] = useState(0);
 
   useEffect(() => {
-    if (videoRef.current) {
-      if (Hls.isSupported()) {
-        hlsRef.current = new Hls();
-        hlsRef.current.loadSource(url);
-        hlsRef.current.attachMedia(videoRef.current);
-        hlsRef.current.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (isRunning) {
-            videoRef.current
-              .play()
-              .catch((e) => console.error("Error autoplay:", e));
-          }
-        });
-      } else if (
-        videoRef.current.canPlayType("application/vnd.apple.mpegurl")
-      ) {
-        videoRef.current.src = url;
-        if (isRunning) {
-          videoRef.current
-            .play()
-            .catch((e) => console.error("Error autoplay:", e));
-        }
-      }
-    }
+    setKey(prev => prev + 1);  // Esto forzará un re-render del video
+  }, [refreshTrigger]);
 
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
+  useEffect(() => {
+    let hls = hlsRef.current;
+
+    const initPlayer = () => {
+      if (isRunning && url && Hls.isSupported()) {
+        if (hls) {
+          hls.destroy();
+        }
+        hls = new Hls({
+          debug: false,
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 90
+        });
+
+        hls.loadSource(url);
+        hls.attachMedia(videoRef.current);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          videoRef.current.play().catch(e => console.log("Autoplay prevented:", e));
+        });
+
+        hlsRef.current = hls;
       }
     };
-  }, [url, isRunning]);
 
-  useEffect(() => {
-    if (videoRef.current) {
-      if (isRunning) {
-        videoRef.current
-          .play()
-          .catch((e) => console.error("Error autoplay:", e));
-      } else {
-        videoRef.current.pause();
+    initPlayer();
+
+    return () => {
+      if (hls) {
+        hls.destroy();
       }
-    }
-  }, [isRunning]);
+    };
+  }, [url, isRunning, key]);
 
   return (
-    <div className="mb-2">
-      <div className="relative" style={{ paddingBottom: "56.25%" }}>
-        <video
-          ref={videoRef}
-          className="absolute top-0 left-0 w-full h-full"
-          controls
-          playsInline
-          muted // Añadir muted para permitir autoplay en más navegadores
-        />
-      </div>
-    </div>
+    <video
+      key={key}
+      ref={videoRef}
+      className="w-full h-auto mb-4"
+      controls
+      playsInline
+      muted
+      style={{ backgroundColor: '#000' }}
+    />
   );
 };
 

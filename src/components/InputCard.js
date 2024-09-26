@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Modal from "./Modal";
 import ConfirmationModal from "./ConfirmationModal";
 import VideoPlayer from "./VideoPlayer";
@@ -21,6 +21,7 @@ const InputCard = ({
   const [nombre, setNombre] = useState("");
   const [url, setUrl] = useState("");
   const [key, setKey] = useState("");
+  const [videoRefreshTrigger, setVideoRefreshTrigger] = useState(0);
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
   const [confirmationModal, setConfirmationModal] = useState({
@@ -28,20 +29,40 @@ const InputCard = ({
     message: "",
     onConfirm: null,
   });
+  const refreshTimeoutRef = useRef(null);
 
   useEffect(() => {
     const fetchInputStatus = async () => {
       try {
         const response = await fetch(`/api/process/${input.id}/state`);
         const data = await response.json();
-        setLocalInput((prevInput) => ({ ...prevInput, state: data.state }));
+        setLocalInput((prevInput) => {
+          if (prevInput.state !== data.state) {
+            if (data.state === "running") {
+              // Configurar un timeout para refrescar el video después de 3 segundos
+              if (refreshTimeoutRef.current) {
+                clearTimeout(refreshTimeoutRef.current);
+              }
+              refreshTimeoutRef.current = setTimeout(() => {
+                setVideoRefreshTrigger(prev => prev + 1);
+              }, 3000);
+            }
+            return { ...prevInput, state: data.state };
+          }
+          return prevInput;
+        });
       } catch (error) {
         console.error("Error fetching input status:", error);
       }
     };
 
     const intervalId = setInterval(fetchInputStatus, 5000);
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
   }, [input.id]);
 
   useEffect(() => {
@@ -135,10 +156,14 @@ const InputCard = ({
         <span className="text-2xl mb-2">{getStatusIcon(localInput.state)}</span>
       </div>
       <InputData input={input} />
-      <VideoPlayer
-        url={localInput.defaultOutputs.HLS}
-        isRunning={localInput.state === "running"}
-      />
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold mb-2">Video Preview</h3>
+        <VideoPlayer
+          url={localInput.defaultOutputs.HLS}
+          isRunning={localInput.state === "running"}
+          refreshTrigger={videoRefreshTrigger}
+        />
+      </div>
       <InputInfo name={input.name} streamId={input.streamId} />
       <OutputDefault defaultOutputs={input.defaultOutputs} />
       <CustomOutputs
@@ -151,16 +176,13 @@ const InputCard = ({
           onClick={openModal}
           className="flex justify-center mt-4 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
         >
-        Agregar Punto de Publicación RTMP
-
+          Agregar Punto de Publicación RTMP
         </button>
       </div>
 
       {isModalOpen && (
         <Modal onClose={closeModal}>
-          <h2 className="text-xl font-bold mb-4">
-            RTMP
-          </h2>
+          <h2 className="text-xl font-bold mb-4">RTMP</h2>
           <form onSubmit={handleAgregarPunto} className="space-y-4">
             <div>
               <label className="text-gray-400">Nombre</label>
