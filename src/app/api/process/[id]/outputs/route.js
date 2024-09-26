@@ -5,7 +5,6 @@ import { uuid } from "uuidv4";
 export async function GET() {
   try {
     const data = await restreamerAPIConnection();
-    console.log(data);
     
     
     return NextResponse.json(data); // Devuelve los datos obtenidos de la API de Restreamer

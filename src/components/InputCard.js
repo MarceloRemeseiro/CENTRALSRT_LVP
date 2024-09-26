@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import IframePlayer from "./IframePlayer";
 import Modal from "./Modal";
 import ConfirmationModal from "./ConfirmationModal";
 import VideoPlayer from "./VideoPlayer";
-import CopyButton from "./CopyButton";
 import OutputDefault from "./OutputDefault";
 import CustomOutputs from "./CustomOutputs";
 import InputInfo from "./InputInfo";
+import InputData from "./InputData";
+import Link from "next/link";
 
 const InputCard = ({
   input,
@@ -21,6 +21,8 @@ const InputCard = ({
   const [nombre, setNombre] = useState("");
   const [url, setUrl] = useState("");
   const [key, setKey] = useState("");
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
   const [confirmationModal, setConfirmationModal] = useState({
     isOpen: false,
     message: "",
@@ -45,9 +47,6 @@ const InputCard = ({
   useEffect(() => {
     setLocalOutputs(input.customOutputs);
   }, [input.customOutputs]);
-
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
 
   const handleAgregarPunto = async (e) => {
     e.preventDefault();
@@ -128,53 +127,19 @@ const InputCard = ({
   return (
     <div className="bg-gray-800 text-gray-200 shadow-lg rounded-lg p-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold mb-2 text-white">
-          SRT INPUT # {index + 1}
-        </h2>
+        <Link href={`input/${input.id}`}>
+          <h2 className="text-xl font-bold mb-2 text-white">
+            SRT INPUT # {index + 1}
+          </h2>
+        </Link>
         <span className="text-2xl mb-2">{getStatusIcon(localInput.state)}</span>
       </div>
-
-      <div className="bg-gray-700 p-4 rounded-lg mb-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-gray-400 font-semibold">URL</p>
-            <p className="text-sm text-gray-300 break-all">
-              srt://lvp.streamingpro.es
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-400 font-semibold">PORT</p>
-            <p className="text-sm text-gray-300">6001</p>
-          </div>
-          <div>
-            <p className="text-gray-400 font-semibold">LATENCY</p>
-            <p className="text-sm text-gray-300">120ms</p>
-          </div>
-          <div>
-            <p className="text-gray-400 font-semibold">TIPO</p>
-            <p className="text-sm text-gray-300">CALLER</p>
-          </div>
-          <div className="col-span-2">
-            <p className="text-gray-400 font-semibold">STREAMID</p>
-            <div className="flex items-center justify-between ">
-              <p className="text-sm text-gray-300 break-all">
-                {`${input.streamId}.stream,mode:publish`}
-              </p>
-              <CopyButton text={`${input.streamId}.stream,mode:publish`} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-2">
-        <VideoPlayer
-          url={localInput.defaultOutputs.HLS}
-          isRunning={localInput.state === "running"}
-        />
-      </div>
-
+      <InputData input={input} />
+      <VideoPlayer
+        url={localInput.defaultOutputs.HLS}
+        isRunning={localInput.state === "running"}
+      />
       <InputInfo name={input.name} streamId={input.streamId} />
-
       <OutputDefault defaultOutputs={input.defaultOutputs} />
       <CustomOutputs
         localOutputs={localOutputs}
@@ -184,16 +149,17 @@ const InputCard = ({
       <div className="flex justify-center mt-4">
         <button
           onClick={openModal}
-          className="flex justify-center px-4 py-2 bg-blue-600 text-white text-xl font-extrabold rounded hover:bg-blue-700 transition-colors"
+          className="flex justify-center mt-4 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
         >
-          +
+        Agregar Punto de Publicación RTMP
+
         </button>
       </div>
 
       {isModalOpen && (
         <Modal onClose={closeModal}>
           <h2 className="text-xl font-bold mb-4">
-            Agregar Punto de Publicación RTMP
+            RTMP
           </h2>
           <form onSubmit={handleAgregarPunto} className="space-y-4">
             <div>

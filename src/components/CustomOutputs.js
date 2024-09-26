@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const CustomOutputs = ({ localOutputs, handleEliminarPunto, handleToggle }) => {
   const getSwitchColor = (output) => {
@@ -8,7 +8,9 @@ const CustomOutputs = ({ localOutputs, handleEliminarPunto, handleToggle }) => {
   };
 
   const switchStyle = (output) =>
-    `relative inline-flex h-6 w-11 items-center rounded-full transition ${getSwitchColor(output)}`;
+    `relative inline-flex h-6 w-11 items-center rounded-full transition ${getSwitchColor(
+      output
+    )}`;
 
   const circleStyle = (output) =>
     `inline-block h-4 w-4 rounded-full bg-white transition transform ${
@@ -42,7 +44,10 @@ const CustomOutputs = ({ localOutputs, handleEliminarPunto, handleToggle }) => {
               </div>
             </div>
             <p className="text-sm break-all text-gray-400">
-              {output.address}
+              <strong className="text-gray-300">URL : </strong> {output.address}
+            </p>
+            <p className="text-sm break-all text-gray-400">
+              <strong className="text-gray-300">KEY : </strong> {output.key}
             </p>
             <button
               onClick={() => handleEliminarPunto(output.id)}

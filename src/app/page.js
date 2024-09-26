@@ -1,13 +1,39 @@
 "use client";
 import { useState, useEffect } from "react";
-import InputCard from "../components/InputCard"; // El componente hijo
+import InputCard from "../components/InputCard";
+import Login from "../components/Login";
 
-export default function Page() {
+function Home() {
+  const [user, setUser] = useState(null);
   const [inputs, setInputs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch para obtener los inputs y outputs
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchInputs();
+    }
+  }, [user]);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+    setInputs([]);
+  };
+
   const fetchInputs = async () => {
     try {
       const response = await fetch("/api/process/inputs", {
@@ -19,20 +45,16 @@ export default function Page() {
       }
 
       const data = await response.json();
-
-      // Ordenamos los inputs por el nombre aquí
       const sortedData = data.sort((a, b) => a.name.localeCompare(b.name));
-
-      setInputs(sortedData || []); // Aseguramos que siempre sea una lista
-      setLoading(false);
+      setInputs(sortedData || []);
     } catch (error) {
       console.error("Error al cargar los inputs:", error);
       setError("Error al cargar los inputs");
+    } finally {
       setLoading(false);
     }
   };
 
-  // Función para actualizar un input
   const updateInput = (updatedInput) => {
     setInputs((prevInputs) =>
       prevInputs.map((input) =>
@@ -41,7 +63,6 @@ export default function Page() {
     );
   };
 
-  // Función para agregar un punto de publicación
   const agregarPuntoPublicacion = async (id, { nombre, url, streamKey }) => {
     try {
       const response = await fetch(`/api/process/${id}/outputs`, {
@@ -71,7 +92,6 @@ export default function Page() {
     }
   };
 
-  // Función para eliminar un punto de publicación
   const eliminarPuntoPublicacion = async (inputId, outputId) => {
     try {
       const response = await fetch(`/api/process/${outputId}/outputs`, {
@@ -96,47 +116,62 @@ export default function Page() {
   const toggleOutputState = async (outputId, newState) => {
     try {
       const response = await fetch(`/api/process/${outputId}/state`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ order: newState }),
       });
-  
+
       if (!response.ok) {
-        throw new Error('Failed to toggle output state');
+        throw new Error("Failed to toggle output state");
       }
-  
+
       const updatedOutput = await response.json();
-      
-      // Actualizar el estado global si es necesario
-      setInputs(prevInputs => 
-        prevInputs.map(input => ({
+
+      setInputs((prevInputs) =>
+        prevInputs.map((input) => ({
           ...input,
-          customOutputs: input.customOutputs.map(output =>
-            output.id === outputId ? { ...output, state: updatedOutput.state } : output
-          )
+          customOutputs: input.customOutputs.map((output) =>
+            output.id === outputId
+              ? { ...output, state: updatedOutput.state }
+              : output
+          ),
         }))
       );
-  
+
       return updatedOutput;
     } catch (error) {
-      console.error('Error toggling output state:', error);
-      // Si hay un error, consideramos que el estado es "failed"
+      console.error("Error toggling output state:", error);
       return { state: "failed" };
     }
   };
-  
-  useEffect(() => {
-    fetchInputs();
-  }, []);
 
-  if (loading) return <p>Cargando...</p>;
-  if (error) return <p>{error}</p>;
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
+        <span className="loader"></span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  if (error) {
+    return <p className="text-center text-red-500 mt-8">{error}</p>;
+  }
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center">
-        StreamingPro Inputs
-      </h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">StreamingPro Inputs</h1>
+        <button 
+          onClick={handleLogout}
+          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Cerrar sesión
+        </button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {inputs.map((input, index) => (
           <InputCard
@@ -152,3 +187,5 @@ export default function Page() {
     </main>
   );
 }
+
+export default Home;
