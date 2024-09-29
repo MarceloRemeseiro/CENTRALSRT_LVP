@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: centralsrt-lvp
-    command: sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL to be ready...';sleep 1;done;echo 'MySQL is ready!';npx prisma generate && npx prisma migrate deploy && if [ "$NODE_ENV" = "production" ]; then npm run build && npm run start; else npm run dev; fi "
+    command: sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL to be ready...'; sleep 1; done; echo 'MySQL is ready!'; npx prisma generate && npx prisma migrate deploy && if [ \"$NODE_ENV\" = \"production\" ]; then npm run build && npm run start; else npm run dev; fi"
     ports:
       - '3000:3000'
     volumes:
@@ -30,13 +30,12 @@ services:
     ports:
       - '3308:3306'
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data_lvp:/var/lib/mysql
     networks:
       - app-network
 
 volumes:
-  db_data:
-
+  db_data_lvp:
 
 networks:
   app-network:
