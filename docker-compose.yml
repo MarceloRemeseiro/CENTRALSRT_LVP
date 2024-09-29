@@ -22,7 +22,7 @@ services:
 
   db:
     image: mysql:8.0
-    container_name: mysql-central
+    container_name: mysql-central-lvp
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 1122
