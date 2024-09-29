@@ -35,7 +35,7 @@ services:
       - app-network
 
 volumes:
-  db_data-lvp:
+  db_data:
 
 
 networks:
