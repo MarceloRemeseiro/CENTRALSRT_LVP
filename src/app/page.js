@@ -94,54 +94,58 @@ function Home() {
 
   const eliminarPuntoPublicacion = async (inputId, outputId) => {
     try {
-      const response = await fetch(`/api/process/${outputId}/outputs`, {
-        method: "DELETE",
+      const correctedOutputId = outputId.replace(/^(restreamer-ui:egress:rtmp:)(?:restreamer-ui:egress:rtmp:)?/, '$1');
+      console.log(`Intentando eliminar output. Input ID: ${inputId}, Output ID corregido: ${correctedOutputId}`);
+
+      const response = await fetch(`/api/process/${inputId}/outputs`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ outputId: correctedOutputId }),
       });
 
       if (!response.ok) {
-        throw new Error("Error al eliminar el punto de publicación");
+        const errorData = await response.text();
+        console.error('Error response:', errorData);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      updateInput({
-        ...inputs.find((input) => input.id === inputId),
-        customOutputs: inputs
-          .find((input) => input.id === inputId)
-          .customOutputs.filter((output) => output.id !== outputId),
-      });
+      const data = await response.json();
+      console.log('Respuesta de eliminación:', data);
+      return data;
     } catch (error) {
-      console.error("Error al eliminar el punto de publicación:", error);
+      console.error('Error al eliminar el punto de publicación:', error);
+      throw new Error('Error al eliminar el punto de publicación');
     }
   };
 
   const toggleOutputState = async (outputId, newState) => {
     try {
-      const response = await fetch(`/api/process/${outputId}/state`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      console.log(`Intentando cambiar el estado de ${outputId} a ${newState}`);
+      
+      const correctedOutputId = outputId.replace(/^(restreamer-ui:egress:rtmp:)(?:restreamer-ui:egress:rtmp:)?/, '$1');
+      
+      const response = await fetch(`/api/process/${encodeURIComponent(correctedOutputId)}/state`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ order: newState }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to toggle output state");
+        const errorData = await response.json();
+        console.error('Error en la respuesta:', errorData);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const updatedOutput = await response.json();
-
-      setInputs((prevInputs) =>
-        prevInputs.map((input) => ({
-          ...input,
-          customOutputs: input.customOutputs.map((output) =>
-            output.id === outputId
-              ? { ...output, state: updatedOutput.state }
-              : output
-          ),
-        }))
-      );
-
-      return updatedOutput;
+      const data = await response.json();
+      console.log('Respuesta del servidor:', data);
+      return data;
     } catch (error) {
-      console.error("Error toggling output state:", error);
-      return { state: "failed" };
+      console.error('Error al cambiar el estado del output:', error);
+      throw error;
     }
   };
 

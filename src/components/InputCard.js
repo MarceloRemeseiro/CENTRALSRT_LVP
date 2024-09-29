@@ -69,6 +69,17 @@ const InputCard = ({
     setLocalOutputs(input.customOutputs);
   }, [input.customOutputs]);
 
+  const fetchOutputState = async (outputId) => {
+    try {
+      const response = await fetch(`/api/process/${outputId}/state`);
+      const data = await response.json();
+      return data.state;
+    } catch (error) {
+      console.error("Error al obtener el estado del output:", error);
+      return "unknown";
+    }
+  };
+
   const handleAgregarPunto = async (e) => {
     e.preventDefault();
     const nuevoOutput = await agregarPuntoPublicacion(input.id, {
@@ -94,11 +105,21 @@ const InputCard = ({
   };
 
   const performEliminarPunto = async (outputId) => {
-    await eliminarPuntoPublicacion(input.id, outputId);
-    setLocalOutputs(localOutputs.filter((output) => output.id !== outputId));
+    // Corregir el ID si está duplicado
+    const correctedOutputId = outputId.replace(/^(restreamer-ui:egress:rtmp:)(?:restreamer-ui:egress:rtmp:)?/, '$1');
+    console.log("ID corregido para eliminar:", correctedOutputId);
+
+    try {
+      await eliminarPuntoPublicacion(input.id, correctedOutputId);
+      setLocalOutputs(prevOutputs => prevOutputs.filter(output => output.id !== outputId));
+    } catch (error) {
+      console.error("Error al eliminar el punto de publicación:", error);
+      alert("Error al eliminar el punto de publicación. Por favor, inténtelo de nuevo.");
+    }
   };
 
   const handleToggle = async (outputId, currentState, index) => {
+    console.log("handleToggle llamado con outputId:", outputId, "currentState:", currentState, "index:", index);
     if (currentState === "running") {
       setConfirmationModal({
         isOpen: true,
@@ -122,7 +143,12 @@ const InputCard = ({
         )
       );
 
-      const updatedOutput = await toggleOutputState(outputId, newState);
+      const correctedOutputId = outputId.replace(/^(restreamer-ui:egress:rtmp:)(?:restreamer-ui:egress:rtmp:)?/, '$1');
+      console.log("ID corregido:", correctedOutputId);
+
+      const updatedOutput = await toggleOutputState(correctedOutputId, newState);
+
+      console.log("Estado actualizado recibido:", updatedOutput.state);
 
       setLocalOutputs((prevOutputs) =>
         prevOutputs.map((output, i) =>
@@ -131,6 +157,19 @@ const InputCard = ({
             : output
         )
       );
+
+      // Forzar una actualización del estado después de un breve retraso
+      setTimeout(async () => {
+        const refreshedState = await fetchOutputState(correctedOutputId);
+        setLocalOutputs((prevOutputs) =>
+          prevOutputs.map((output, i) =>
+            i === index
+              ? { ...output, state: refreshedState }
+              : output
+          )
+        );
+      }, 2000);
+
     } catch (error) {
       console.error("Error al cambiar el estado del output:", error);
       setLocalOutputs((prevOutputs) =>

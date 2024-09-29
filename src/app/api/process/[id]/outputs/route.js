@@ -139,29 +139,36 @@ export async function POST(request, { params }) {
     );
   }
 }
-// Eliminar un output por ID
+
 export async function DELETE(request, { params }) {
   const { id } = params;
+  
+  let outputId;
+  try {
+    const body = await request.json();
+    outputId = body.outputId;
+  } catch (error) {
+    console.error('Error parsing request body:', error);
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  if (!outputId) {
+    return NextResponse.json({ error: 'outputId is required' }, { status: 400 });
+  }
+
+  console.log(`Eliminando output. Input ID: ${id}, Output ID: ${outputId}`);
 
   try {
-    // Eliminar el prefijo no deseado si está presente en el ID
-    console.log(`Eliminando output con ID: ${params}`);
-
-    // Realiza la solicitud DELETE al servidor Restreamer
-    const response = await authenticatedRequest(
-      "DELETE",
-      `/api/v3/process/${id}`
-    );
-
-    // Si la eliminación es exitosa
-    return NextResponse.json({ message: "Output eliminado con éxito" });
+    // No necesitamos corregir el ID aquí, ya que lo hicimos en el cliente
+    const result = await authenticatedRequest('DELETE', `/api/v3/process/${outputId}`);
+    
+    console.log('Resultado de la eliminación:', result);
+    
+    return NextResponse.json({ message: 'Output eliminado con éxito' });
   } catch (error) {
-    console.error("Error al eliminar el output:", error);
+    console.error('Error al eliminar el output:', error);
     return NextResponse.json(
-      {
-        error: "Error al eliminar el output",
-        details: error.response?.data || error.message,
-      },
+      { error: 'Error al eliminar el output', details: error.message },
       { status: 500 }
     );
   }
