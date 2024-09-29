@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import InputCard from "../components/InputCard";
 import Login from "../components/Login";
 
@@ -63,40 +63,37 @@ function Home() {
     );
   };
 
-  const agregarPuntoPublicacion = async (id, { nombre, url, streamKey }) => {
+  const agregarPuntoPublicacion = useCallback(async (inputId, { nombre, url, streamKey }) => {
     try {
-      const response = await fetch(`/api/process/${id}/outputs`, {
+      const response = await fetch(`/api/process/${inputId}/outputs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: nombre,
-          address: url,
-          streamKey: streamKey,
-        }),
+        body: JSON.stringify({ name: nombre, address: url, streamKey }),
       });
-
       if (!response.ok) {
-        throw new Error("Error al agregar punto de publicación");
+        throw new Error("Failed to add publication point");
       }
-
-      const createdOutput = await response.json();
-      updateInput({
-        ...inputs.find((input) => input.id === id),
-        customOutputs: [
-          ...(inputs.find((input) => input.id === id).customOutputs || []),
-          createdOutput,
-        ],
-      });
-    } catch (error) {
-      console.error("Error al agregar el punto de publicación:", error);
+      const newOutput = await response.json();
+      setInputs((prevInputs) =>
+        prevInputs.map((input) =>
+          input.id === inputId
+            ? {
+                ...input,
+                customOutputs: [...(input.customOutputs || []), newOutput],
+              }
+            : input
+        )
+      );
+      return newOutput;
+    } catch (err) {
+      console.error("Error adding publication point:", err);
+      return null;
     }
-  };
+  }, []);
 
-  const eliminarPuntoPublicacion = async (inputId, outputId) => {
+  const eliminarPuntoPublicacion = useCallback(async (inputId, outputId) => {
     try {
       const correctedOutputId = outputId.replace(/^(restreamer-ui:egress:rtmp:)(?:restreamer-ui:egress:rtmp:)?/, '$1');
-      console.log(`Intentando eliminar output. Input ID: ${inputId}, Output ID corregido: ${correctedOutputId}`);
-
       const response = await fetch(`/api/process/${inputId}/outputs`, {
         method: 'DELETE',
         headers: {
@@ -106,48 +103,57 @@ function Home() {
       });
 
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Error response:', errorData);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Respuesta de eliminación:', data);
+      setInputs((prevInputs) =>
+        prevInputs.map((input) =>
+          input.id === inputId
+            ? {
+                ...input,
+                customOutputs: input.customOutputs.filter(
+                  (output) => output.id !== outputId
+                ),
+              }
+            : input
+        )
+      );
       return data;
     } catch (error) {
       console.error('Error al eliminar el punto de publicación:', error);
-      throw new Error('Error al eliminar el punto de publicación');
+      throw error;
     }
-  };
+  }, []);
 
-  const toggleOutputState = async (outputId, newState) => {
+  const toggleOutputState = useCallback(async (outputId, newState) => {
     try {
-      console.log(`Intentando cambiar el estado de ${outputId} a ${newState}`);
-      
       const correctedOutputId = outputId.replace(/^(restreamer-ui:egress:rtmp:)(?:restreamer-ui:egress:rtmp:)?/, '$1');
-      
-      const response = await fetch(`/api/process/${encodeURIComponent(correctedOutputId)}/state`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch(`/api/process/${correctedOutputId}/state`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ order: newState }),
       });
-
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error en la respuesta:', errorData);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error("Failed to toggle output state");
       }
-
-      const data = await response.json();
-      console.log('Respuesta del servidor:', data);
-      return data;
+      const updatedOutput = await response.json();
+      setInputs((prevInputs) =>
+        prevInputs.map((input) => ({
+          ...input,
+          customOutputs: input.customOutputs?.map((output) =>
+            output.id === outputId
+              ? { ...output, state: updatedOutput.state }
+              : output
+          ),
+        }))
+      );
+      return updatedOutput;
     } catch (error) {
       console.error('Error al cambiar el estado del output:', error);
       throw error;
     }
-  };
+  }, []);
 
   if (loading) {
     return (
