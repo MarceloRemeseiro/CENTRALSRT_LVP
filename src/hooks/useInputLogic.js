@@ -168,9 +168,9 @@ export const useInputLogic = (input, agregarPuntoPublicacion, eliminarPuntoPubli
 
   return {
     localInput,
-    setLocalInput,  // Añade esta línea
+    setLocalInput, 
     localOutputs,
-    setLocalOutputs,  // Añade esta línea
+    setLocalOutputs, 
     isModalOpen,
     videoRefreshTrigger,
     newOutput,
